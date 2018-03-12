@@ -3,6 +3,7 @@ import requests
 import json
 import time
 import os
+import pyprogress.progress as pyprog
 
 def roundStr(numberToRound):
 	return "{:.4f}".format(numberToRound) 
@@ -18,7 +19,7 @@ class RedditClient(object):
 			json_data = json.loads(req.text)
 			return json_data['data']['subscribers']
 			
-		except exception as e:
+		except Exception as e:
 			print("Error : " + str(e))
 			
 
@@ -29,9 +30,9 @@ def loadConfig(filename):
 	
 	
 def PullReddit():
-	print("Pulling Reddit subscribers", end="", flush=True)
+	print("Pulling Reddit subscribers: ", end="", flush=True)
 
-	dbConfig = loadConfig('C:\AppCredentials\CoinTrackerPython\database.config')
+	dbConfig = loadConfig(r'C:\AppCredentials\CoinTrackerPython\database.config')
 	
 	con = psycopg2.connect(dbConfig[0]["postgresql_conn"])
 	cursor = con.cursor()
@@ -42,12 +43,12 @@ def PullReddit():
 
 	if cursor.rowcount == 0:
 		print("No Reddit sources found")
-		return;
 		
 	redditApi = RedditClient()
+	progress = pyprog.progress(len(rows))
 	
-	for row in rows:
-		print(".", end="", flush=True)
+	for x,row in enumerate(rows):
+		progress.updatePercent(x)
 		data_all = redditApi.get_subscriber_count(str(row[0]))
 
 		params = (row[3], row[4], data_all)
@@ -55,7 +56,7 @@ def PullReddit():
 	cursor.close()
 	con.commit()
 	con.close()
-	print("Done")
+	progress.close()
 
 	
 def main():
